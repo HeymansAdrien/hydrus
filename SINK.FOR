@@ -365,3 +365,156 @@ c            Sink(i)=min(Sink(i),0.5*(ThNew(i)-ParD(1,MatNum(i)))/dt)
       end
 
 ************************************************************************
+
+*     NEW 06/01/20 Reads from Options.in the parameters for the Couvreur et al. (2012) root water uptake model
+*     and stress function
+*     Initializes other variables needed by this model
+
+      subroutine CouIn(StresFun,hx_min,Krs,Kcomp,NumNP,x,zSurf,BCtp,BCr,
+     !                 lCouvreur,lDayVar)
+
+      double precision Krs,Kcomp
+      real hx_min
+      integer StresFun,BCtp
+      logical lCouvreur,lDayVar
+      dimension x(NumNP),Krs(24),Kcomp(24)
+
+      read(35,*,err=901)
+      read(35,*,err=901)
+      read(35,*,err=901)
+      read(35,*,err=901) StresFun,BCtp,lDayVar
+*               StresFun = 0: the transpiration rate is not sensitive to 
+*                             the plant collar water potential (Tact = Tpot).
+*               StresFun = 1: the transpiration rate can be adjusted depending on 
+*                             the plant collar water potential.
+*               BCtp - type of boundary condition at the plant collar 
+*               = 1: for a pressure head BC (Collar water potential directly defined 
+*                                            as root system boundary condition); 
+*               = 2: for a flux BC.
+*               lDayVar - Daily variations in root water uptake and evaporation
+      read(35,*,err=901)
+      read(35,*,err=901)
+      read(35,*,err=901) hx_min
+*               hx_min [L] is the threshold collar water potential that triggers 
+*               a reduction of Tact, as compared to Tpot.
+      read(35,*,err=901)
+      read(35,*,err=901)
+      read(35,*,err=901) Krs(1) !(Krs(i),i=1,24)
+*               Equivalent conductance of the whole root system [cm³/hPa/day]
+      read(35,*,err=901)
+      read(35,*,err=901)
+      read(35,*,err=901) Kcomp(1)! (Kcomp(i),i=1,24)
+*               Compensatory RWU conductance of the root system [cm³/hPa/day]
+      if(BCtp.eq.1) BCr=hx_min
+
+      zSurf=x(NumNP)
+      lCouvreur=.true.
+      write(*,*) 'Root water uptake with Couvreur model'
+
+      return
+
+901   lCouvreur=.false.
+      return
+      end
+
+************************************************************************
+
+      subroutine SetSnkV(NumNP,Beta,zSurf,x,StresFun,Krs,Kcomp,hx_min,
+     !                   BCr,BCtp,hNew,hTot,Sink,rRoot,hRoot,vRoot,
+     !                   lOmegaW,OmegaW,PhSeq,PhLeaf)
+
+*     BCr - value of the head/flux at the plant collar.
+*     VNodes - a vector containing the volume associated to each soil node.
+*     zSurf - coordinate of the surface node [L]
+
+      integer StresFun,BCtp,dummy
+      double precision Krs,Kcomp,Krsn,Kcompn !,t
+      real hx_min,var_dum
+      dimension hNew(NumNP),x(NumNP),hTot(NumNP),SSF(NumNP),Sink(NumNP)
+      dimension Beta(NumNP),Krs(24),Kcomp(24)
+      logical lOmegaW
+      real intent
+
+      vRoot=0.
+      hRoot=0.
+      ARoot=0.
+      PhSeq=0.
+      SSF_tot=0.
+      Krsn = Krs(1)
+      Kcompn = Kcomp(1)
+      !dummy= 0
+      !do 13 n=1,24
+      !  dummy= dummy+1
+      !  var_dum = 0.04167 + (n-1)*0.0416
+      !  if (var_dum .le. t) then 
+      !    Krsn = Krs(dummy)
+      !    Kcompn = Kcomp(dummy)
+      !  end if
+!13    !continue
+
+
+*     BCtp - type of boundary condition at the plant collar 
+*          = 2: for a flux BC.
+      if(BCtp.eq.2) BCr=rRoot    ! Potential transpiration
+
+      ! Calcul of PhSeq
+      do 11 n=1,NumNP
+        if(Beta(n).NE.0.) then
+          if(n.eq.1) then
+            dx=(x(2)-x(1))/2.
+          else if(N.eq.NumNP) then
+            dx=(x(NumNP)-x(NumNP-1))/2.
+          else
+            dx=(x(n+1)-x(n-1))/2.
+          end if
+          hTot(n)=hNew(n)+(x(n)-zSurf) ! The total soil water potential is the sum of 
+*                                       the matric potential and the gravitational potential.
+          SSF(n) = Beta(n)*dx          ! SSF [-] whereas Beta [L-1]
+          PhSeq=PhSeq+SSF(n)*hTot(n)  ! The "DOT_PRODUCT" of hTot by SSF.
+          SSF_tot = SSF_tot + SSF(n)
+        end if
+11    continue
+      if(BCtp.eq.2) then          ! Flux BC for root uptake
+        Tpot=BCr                  ! [L/T]
+        PHcollar=-abs(Tpot)/Krsn+PhSeq  ! First calculate the collar water potential considering no stress.
+        if(StresFun.eq.1.and.PHcollar.lt.hx_min) then			!We check if we are under the threshold collar water potential.
+          PHcollar=hx_min         ! In case of stress, the collar water potential stays blocked at the treshold value, and will be used to calculate the actual transpiration rate.
+          Tact=Krsn*(PhSeq-PHcollar)![L/T] Convert the actual collar water potential into the actual transpiration (Couvreur jul 2011)
+        else
+          Tact=Tpot               ! [L/T]
+        end if
+      else if(BCtp.eq.1) then     ! Head BC for root uptake  
+        PHCollar=BCr
+        Tact=Krsn*(PhSeq-PHcollar)  ! [L/T] Convert the actual collar water potential into the actual transpiration (Couvreur jul 2011)
+      end if
+      ! Calcul of Sink [-]
+      do 12 n=1,NumNP
+        if(Beta(n).NE.0.) then
+          if(n.eq.1) then
+            dx=(x(2)-x(1))/2.
+          else if(N.eq.NumNP) then
+            dx=(x(NumNP)-x(NumNP-1))/2.
+          else
+            dx=(x(n+1)-x(n-1))/2.
+          end if
+c          Sink(n)=abs(Tact)*(SSF(n)/dx)/VNode(n)+
+c     !            Kcomp*(hTot(n)-PhSeq)*(SSF(n)/dx)/VNode(n)
+          Sink(n)=abs(Tact)*(SSF(n)/dx)
+     !            +Kcompn*(hTot(n)-PhSeq)*(SSF(n)/dx)
+          vRoot=vRoot+Sink(n)*dx
+          hRoot=hRoot+hNew(n)*dx
+          ARoot=ARoot+dx
+        end if
+12    continue
+      if(ARoot.gt.0.001) hRoot=hRoot/ARoot
+      PhLeaf = PhSeq-vRoot/Krsn
+      if(lOmegaW) then
+         if(Tpot.gt.0.) OmegaW=vRoot/Tpot
+      end if
+      return
+
+910   format('Stress in the collar xylem: PHcollar=',f12.3,' is lower th
+     !an criterion ',f12.3)
+      end
+
+************************************************************************

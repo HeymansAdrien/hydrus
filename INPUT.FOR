@@ -1553,7 +1553,7 @@ c        if(lActRSU) then              ! Active uptake only for the last solute
      !                hSeep,lEqInit,lSinPrec,iMoistDep,OmegaC,WTransf,
      !                lDualNEq,lFlux,iCrop,iRootIn,lMassIni,lMetDaily,
      !                Sorb2,lActRSU,OmegaS,SPot,lOmegaW,OmegaW,
-     !                lEnd,lVaporOut,lFluxOut)
+     !                lEnd,lVaporOut,lFluxOut,PhSeq,PhLeaf)
 
       integer TLevel,ALevel,PLevel,err
       logical lVarBC,lMeteo,lBact,lVapor,lEnBal,lDayVar,lEnter,lFiltr,
@@ -1563,7 +1563,7 @@ c        if(lActRSU) then              ! Active uptake only for the last solute
       double precision tPrintInt
       dimension cRoot(NSD),cCumT(NSD),cCumA(NSD),Sink(NumNPD),NTab(1),
      !          wc(NumNPD),cTemp(NumNPD),Sorb2(NSD,NumNPD),CumQ(12)
-
+      real      PhSeq,PhLeaf
 
       lPrint  =.true.
       lMinstep=.true.

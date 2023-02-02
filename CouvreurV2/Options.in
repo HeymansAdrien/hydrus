@@ -1,0 +1,13 @@
+********** SIMPLIFIED ROOT WATER UPTAKE MODEL DATA **********    
+ 
+Stress function ? (1=yes,2=no)   BCtp    lDayVar   MPL
+1                                 2        f       3
+ 
+Threshold value of the stress function [cm]
+-15000
+ 
+Equivalent conductance of the whole root system [cm/hPa/day]
+4.65801909850293e-06
+ 
+Compensatory RWU conductance of the root system [cm/hPa/day]
+4.65801909850293e-06

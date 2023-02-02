@@ -10,11 +10,11 @@
      !                 iDualPor,SinkIm,WTransf,lDensity,SnowLayer,
      !                 lCentrif,Radius,ThNewIm,WLayer,hCritS,lEnd,
      !                 lFluxOut,jPrint,vTop,vBot,lFlux,NObs,Node,vNew,
-     !                 cNew,cTop)
+     !                 cNew,cTop,PhSeq,PhLeaf,lCouvreur)
       integer TLevel
       double precision t
       logical ConvgF,lWat,lChem,lScreen,lPrint,lVapor,lWTDep,
-     !        lFluxOut,lDensity,lCentrif,WLayer,lEnd,lFlux
+     !        lFluxOut,lDensity,lCentrif,WLayer,lEnd,lFlux,lCouvreur
       dimension CumQ(12),cRoot(NS),Conc(NSD,N),cvTop(NS),cvBot(NS),
      !          cvCh0(NS),cvCh1(NS),cCumT(NS),cCumA(NS),CumCh(10,NS),
      !          cvChR(NS),cvChIm(NS),Con(N),ThOld(N),ThNew(N),hNew(N),
@@ -175,7 +175,11 @@ c     !                             ThNewIm(j)*fRo(1,(Sorb(1,j))))/2.
         end if
       end if
       if(TLevel.eq.1.and.lPrint) then
-        write(71,130,err=901)
+        if(lCouvreur) then
+          write(71,131,err=901)
+        else
+          write(71,130,err=901)
+        end if
         if(lFluxOut) write(44,111)
         if(lChem) then
           write(70,150,err=902)
@@ -188,15 +192,34 @@ c     !                             ThNewIm(j)*fRo(1,(Sorb(1,j))))/2.
       end if
       if(lPrint.and.jPrint.eq.1) then
         if(lWat.or.TLevel.eq.1.or.lEnd) then
-          if(t.lt.9999999.) then
-c            write(71,170,err=901) t,rTop,vTopW,vTop,vTopV,vBot,(CumQ(i),
-            write(71,170,err=901) t,rTop,rRoot,vTop,vRoot,vBot,(CumQ(i),
+          if(lCouvreur) then
+            if(t.lt.9999999.) then
+            
+c            write(71,172,err=901) t,rTop,vTopW,vTop,vTopV,vBot,(CumQ(i),
+            write(71,172,err=901) t,rTop,rRoot,vTop,vRoot,vBot,(CumQ(i),
      !               i=1,5),hNew(N),hRoot,hNew(1),vRunOff,CumQ(6),
-     !               Volume,CumQ(7),CumQ(8),TLevel,CumQ(11),SnowLayer
-	    else
+     !               Volume,CumQ(7),CumQ(8),TLevel,CumQ(11),SnowLayer,
+     !               PhSeq,PhLeaf
+	        else
+            write(71,173,err=901) t,rTop,rRoot,vTop,vRoot,vBot,(CumQ(i),
+     !               i=1,5),hNew(N),hRoot,hNew(1),vRunOff,CumQ(6),
+     !               Volume,CumQ(7),CumQ(8),TLevel,CumQ(11),SnowLayer,
+     !               PhSeq,PhLeaf
+            end if
+            else
+              if(t.lt.9999999.) then
+            
+c            write(71,170,err=901) t,rTop,vTopW,vTop,vTopV,vBot,(CumQ(i),
+             write(71,170,err=901) t,rTop,rRoot,vTop,vRoot,vBot,
+     !              (CumQ(i),i=1,5),hNew(N),hRoot,hNew(1),vRunOff,
+     !               CumQ(6),Volume,CumQ(7),CumQ(8),TLevel,CumQ(11),
+     !               SnowLayer
+	        else
             write(71,171,err=901) t,rTop,rRoot,vTop,vRoot,vBot,(CumQ(i),
      !               i=1,5),hNew(N),hRoot,hNew(1),vRunOff,CumQ(6),
      !               Volume,CumQ(7),CumQ(8),TLevel,CumQ(11),SnowLayer
+
+            end if
 	    end if
 	  end if
         if(lChem) then
@@ -269,6 +292,17 @@ c120   format('+',f12.3,2i3,i6,4e9.2,3f6.0)  ! writing at one line
      !       [L/T]         [L]          [L]          [L]         [L]    
      !       [L]         [L]           [L]         [L]          [L/T]   
      !      [L]          [L]          [L]          [L]'/)
+131   format(/
+     !'       Time          rTop        rRoot        vTop         vRoot 
+     !       vBot       sum(rTop)   sum(rRoot)    sum(vTop)   sum(vRoot)
+     !    sum(vBot)      hTop         hRoot        hBot        RunOff   
+     ! sum(RunOff)     Volume     sum(Infil)    sum(Evap) TLevel Cum(WTr
+     !ans)  SnowLayer    PhSeq     PhLeaf'/
+     !'        [T]         [L/T]        [L/T]        [L/T]        [L/T] 
+     !       [L/T]         [L]          [L]          [L]         [L]    
+     !       [L]         [L]           [L]         [L]          [L/T]   
+     !      [L]          [L]          [L]          [L]      [-]    [L]
+     !        [L]         [L]         [L]'/)
 140   format(//'    TLevel      Time          dt      Iter    ItCum  K',
      !'odT  KodB  Convergency'/)
 150   format(//'    TLevel      Time           dt     ItrW ItrC    ItC',
@@ -285,6 +319,8 @@ c120   format('+',f12.3,2i3,i6,4e9.2,3f6.0)  ! writing at one line
      ![M/L2]      [M/L3]      [M/L2/T]      [M/L2]')
 170   format(f13.4,11e13.5,2e13.5,5e13.5,i7,e13.5,f11.3)
 171   format(e14.8,11e13.5,2e13.5,5e13.5,i7,e13.5,f11.3)
+172   format(f13.4,11e13.5,2e13.5,5e13.5,i7,e13.5,f11.3,2e13.5)
+173   format(e14.8,11e13.5,2e13.5,5e13.5,i7,e13.5,f11.3,2e13.5)
 180   format(i9,e15.7,e13.5,2i5,i9,2i6,l6,2f10.3)
 190   format(f14.4,12e13.5,i8,e13.5,8e13.5)
 191   format(e15.8,12e13.5,i8,e13.5,8e13.5)
